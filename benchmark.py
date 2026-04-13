@@ -10,7 +10,7 @@ a full comparative analysis including:
 Usage:
     python benchmark.py
 
-Author: [Your Name]
+Author: Wizards
 Course: DSAI3203
 """
 

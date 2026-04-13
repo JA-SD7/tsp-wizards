@@ -12,7 +12,7 @@ Objectives:
 Usage:
     python agwo_tsp.py
 
-Author: [Your Name]
+Author: Wizards
 Course: DSAI3203
 """
 
@@ -76,17 +76,6 @@ def compute_distance_matrix(coords):
                 )
     return dist
 
-
-# =============================================================================
-# [MODIFY ZONE 2] - EMISSION-BASED OBJECTIVE (f2)
-# f2 = total carbon emissions across the tour.
-# Each edge has a randomly assigned fuel consumption rate (L/km) simulating
-# different vehicle loads or road gradients between cities.
-# Emission per edge = distance * fuel_rate * EMISSION_FACTOR
-# EMISSION_FACTOR = 2.31 kg CO2 per litre (standard petrol value)
-# This directly ties to the project's stated goal of reducing emissions
-# in logistics and delivery operations.
-# =============================================================================
 EMISSION_FACTOR = 2.31  # kg CO2 per litre of petrol burned
 
 def compute_emission_matrix(dist_matrix, seed=99):
@@ -136,16 +125,6 @@ def evaluate(tour, dist_matrix, emission_matrix):
     return f1, f2
 
 
-# =============================================================================
-# [MODIFY ZONE 3] - TWO-OPT SWAP OPERATOR
-# The 2-opt move reverses a sub-segment of the tour between two randomly
-# selected positions i and j. This is more structured than a plain city
-# swap because it preserves partial route continuity — the reversed segment
-# still connects its endpoints, just in the opposite direction.
-# This is known to produce better solutions than random swaps because it
-# directly eliminates route crossings, which are always suboptimal in
-# Euclidean TSP.
-# =============================================================================
 def two_opt_move(tour, n_moves=1):
     """
     Apply n two-opt moves to a tour.
@@ -207,17 +186,6 @@ def update_pareto_archive(archive, new_tour, new_obj):
     archive.append((new_tour[:], new_obj))
     return archive
 
-
-# =============================================================================
-# [MODIFY ZONE 4] - CROWDING DISTANCE LEADER SELECTION
-# Instead of selecting alpha, beta, delta randomly from the archive,
-# we use crowding distance to prefer leaders that are spread out along
-# the Pareto front. This avoids clustering all three leaders in one
-# region of the objective space, which would cause the wolf pack to
-# converge prematurely to a small portion of the Pareto front.
-# Crowding distance is the same diversity mechanism used in NSGA-II
-# (Deb et al., 2002), cited in the reference template.
-# =============================================================================
 def crowding_distance(archive):
     """
     Compute the crowding distance for each solution in the archive.
@@ -291,17 +259,6 @@ def select_leaders(archive):
             archive[chosen_idx[1]][0],
             archive[chosen_idx[2]][0])
 
-
-# =============================================================================
-# [MODIFY ZONE 5] - SUB-QUADRATIC ADAPTIVE DECAY (exponent = 1.5)
-# The adaptive parameter a controls how many 2-opt moves are applied
-# when moving toward each leader. It decreases from 2 to 0 over the
-# course of the run.
-# Using exponent 1.5 (sub-quadratic) instead of the standard 2 (quadratic)
-# means a decreases more slowly early on, giving the wolves more exploration
-# time before switching to exploitation. This is beneficial for larger TSP
-# instances where the search space is vast.
-# =============================================================================
 def move_toward_leader(omega_tour, leader_tour, a, n_cities):
     """
     Move an omega wolf toward a leader using 2-opt moves.

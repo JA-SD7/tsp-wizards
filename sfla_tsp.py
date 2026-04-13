@@ -12,7 +12,7 @@ Objectives:
 Usage:
     python sfla_tsp.py
 
-Author: [Your Name]
+Author: Wizards
 Course: DSAI3203
 """
 
@@ -67,14 +67,6 @@ def compute_distance_matrix(coords):
                 )
     return dist
 
-
-# =============================================================================
-# [MODIFY ZONE 2] - EMISSION-BASED OBJECTIVE (f2)
-# Same emission model as AGWO for a fair comparison.
-# f2 = total carbon emissions across the tour.
-# Emission per edge = distance * fuel_rate * EMISSION_FACTOR
-# EMISSION_FACTOR = 2.31 kg CO2 per litre (standard petrol value)
-# =============================================================================
 EMISSION_FACTOR = 2.31  # kg CO2 per litre of petrol burned
 
 def compute_emission_matrix(dist_matrix, seed=99):
@@ -135,16 +127,6 @@ def update_pareto_archive(archive, new_tour, new_obj):
     archive.append((new_tour[:], new_obj))
     return archive
 
-
-# =============================================================================
-# [MODIFY ZONE 3] - POSITION-BASED CROSSOVER (PBX) LEAP OPERATOR
-# Instead of random swaps, each frog leap uses Position-Based Crossover.
-# PBX inherits a random subset of city positions directly from the best
-# frog, then fills remaining positions from the current frog in order.
-# This is more directed than random swaps — the worst frog actively
-# adopts good city placements from the best frog rather than blindly
-# shuffling, which leads to faster convergence within each memeplex.
-# =============================================================================
 def pbx_leap(frog, best_frog, n_cities):
     """
     Perform a Position-Based Crossover leap toward the best frog.
@@ -181,15 +163,6 @@ def pbx_leap(frog, best_frog, n_cities):
 
     return new_tour
 
-
-# =============================================================================
-# [MODIFY ZONE 2 - MEMEPLEX SORT] - WEIGHTED OBJECTIVE SORTING
-# Frogs are sorted by a weighted sum of both objectives before being
-# distributed into memeplexes. Using 0.6*f1 + 0.4*f2 gives slightly
-# more weight to distance (the primary TSP objective) while still
-# accounting for emissions. This ensures each memeplex contains frogs
-# that are diverse across both objectives, not just ranked by distance.
-# =============================================================================
 def partition_into_memeplexes(population, objectives, m_memeplexes):
     """
     Sort frogs by weighted objective sum and distribute round-robin
