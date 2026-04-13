@@ -5,7 +5,7 @@ Runs both algorithms on the same dataset, collects results, and produces
 a full comparative analysis including:
   - Convergence curves (both algorithms on same plot, normalized x-axis)
   - Pareto front comparison (overlaid scatter plot)
-  - Summary comparison table (distance, time, hypervolume, CPU time)
+  - Summary comparison table (distance, emissions, hypervolume, CPU time)
 
 Usage:
     python benchmark.py
@@ -19,14 +19,11 @@ import random
 import numpy as np
 import matplotlib.pyplot as plt
 
-# Import both algorithm main functions.
-# Utility functions are imported from agwo_tsp to avoid duplication.
-# Make sure your files are named exactly: agwo_tsp.py and sfla_tsp.py
 from agwo_tsp import (
     agwo_motsp,
     load_tsplib,
     compute_distance_matrix,
-    compute_time_matrix,
+    compute_emission_matrix,
 )
 from sfla_tsp import sfla_motsp
 
@@ -100,12 +97,11 @@ def get_reference_point(all_archives, margin=1.1):
 
 # =============================================================================
 # NORMALIZE CONVERGENCE
-# Resamples a convergence curve to a fixed number of points (0-100%)
-# so curves of different lengths can be fairly compared on the same axis.
 # =============================================================================
 def normalize_convergence(curve, n_points=NORM_POINTS):
     """
     Resample a convergence curve to n_points evenly spaced values.
+    Allows fair comparison between AGWO (iterations) and SFLA (shuffles).
 
     Args:
         curve (list): Original convergence values (any length)
@@ -124,7 +120,7 @@ def normalize_convergence(curve, n_points=NORM_POINTS):
 # MULTI-RUN EXECUTOR
 # =============================================================================
 def run_algorithm(name, algo_func, algo_kwargs, n_cities,
-                  dist_matrix, time_matrix, n_runs, base_seed):
+                  dist_matrix, emission_matrix, n_runs, base_seed):
     """
     Run an algorithm multiple times and collect performance statistics.
 
@@ -133,19 +129,19 @@ def run_algorithm(name, algo_func, algo_kwargs, n_cities,
         algo_func (callable): The algorithm function (agwo_motsp or sfla_motsp)
         algo_kwargs (dict): Keyword arguments passed to the algorithm
         n_cities (int): Number of cities
-        dist_matrix, time_matrix: Cost matrices
+        dist_matrix, emission_matrix: Cost matrices
         n_runs (int): Number of independent runs
         base_seed (int): Base random seed (incremented per run)
 
     Returns:
         dict: Results containing archives, normalized convergence, and timing
     """
-    all_archives      = []
-    all_conv_f1_norm  = []
-    all_conv_f2_norm  = []
-    all_best_f1       = []
-    all_best_f2       = []
-    all_times         = []
+    all_archives     = []
+    all_conv_f1_norm = []
+    all_conv_f2_norm = []
+    all_best_f1      = []
+    all_best_f2      = []
+    all_times        = []
 
     print(f"\n{'='*60}")
     print(f"  Running {name} ({n_runs} runs)")
@@ -157,7 +153,7 @@ def run_algorithm(name, algo_func, algo_kwargs, n_cities,
 
         start = time.time()
         archive, conv_f1, conv_f2 = algo_func(
-            n_cities, dist_matrix, time_matrix, **algo_kwargs
+            n_cities, dist_matrix, emission_matrix, **algo_kwargs
         )
         elapsed = time.time() - start
 
@@ -172,7 +168,7 @@ def run_algorithm(name, algo_func, algo_kwargs, n_cities,
         all_times.append(elapsed)
 
         print(f"  Run {run+1:02d}/{n_runs} | "
-              f"f1: {best_f1:.2f} | f2: {best_f2:.4f} | "
+              f"f1: {best_f1:.2f} | f2: {best_f2:.4f} kg CO2 | "
               f"Archive: {len(archive)} | Time: {elapsed:.2f}s")
 
     return {
@@ -192,9 +188,8 @@ def run_algorithm(name, algo_func, algo_kwargs, n_cities,
 def plot_convergence_comparison(agwo_results, sfla_results, dataset_name):
     """
     Plot AGWO vs SFLA convergence curves on the same axes.
-    X-axis is normalized to 0-100% progress so both algorithms are
-    fairly comparable regardless of their different loop counts.
-    Shows mean curve with shaded min/max band across all runs.
+    X-axis normalized to 0-100% progress for fair comparison.
+    Shaded band shows min/max range across all runs.
     """
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
     fig.suptitle(f"Convergence Comparison — {dataset_name}", fontsize=13)
@@ -202,8 +197,8 @@ def plot_convergence_comparison(agwo_results, sfla_results, dataset_name):
     x = np.linspace(0, 100, NORM_POINTS)
 
     for ax, obj_key, ylabel, title_suffix in [
-        (ax1, 'conv_f1', 'Best Distance', 'f1 (Distance)'),
-        (ax2, 'conv_f2', 'Best Time',     'f2 (Travel Time)')
+        (ax1, 'conv_f1', 'Best Distance',       'f1 (Distance)'),
+        (ax2, 'conv_f2', 'Best Emissions (kg CO2)', 'f2 (Emissions)')
     ]:
         for results, color, label in [
             (agwo_results, 'steelblue',  'AGWO'),
@@ -250,8 +245,8 @@ def plot_pareto_comparison(agwo_results, sfla_results, dataset_name):
                 edgecolors='navy', alpha=0.7, label='AGWO')
     plt.scatter(sfla_f1, sfla_f2, c='darkorange', s=60,
                 edgecolors='saddlebrown', alpha=0.7, label='SFLA')
-    plt.xlabel("f1: Total Distance")
-    plt.ylabel("f2: Total Travel Time")
+    plt.xlabel("f1: Total Distance (units)")
+    plt.ylabel("f2: Total Emissions (kg CO2)")
     plt.title(f"Pareto Front Comparison — {dataset_name}")
     plt.legend()
     plt.grid(True, linestyle='--', alpha=0.5)
@@ -262,7 +257,8 @@ def plot_pareto_comparison(agwo_results, sfla_results, dataset_name):
     print(f"  Saved: {fname}")
 
 
-def plot_best_tours_side_by_side(agwo_results, sfla_results, coords, dataset_name):
+def plot_best_tours_side_by_side(agwo_results, sfla_results,
+                                  coords, dataset_name):
     """
     Plot the best tour found by each algorithm side by side on a city map.
     """
@@ -317,13 +313,12 @@ def print_summary_table(agwo_results, sfla_results, ref_point, dataset_name):
     agwo_sizes = [len(a) for a in agwo_results['archives']]
     sfla_sizes = [len(a) for a in sfla_results['archives']]
 
-    # (label, agwo_values, sfla_values, lower_is_better)
     metrics = [
-        ("Best f1 - Distance",  agwo_results['best_f1'], sfla_results['best_f1'], True),
-        ("Best f2 - Time",      agwo_results['best_f2'], sfla_results['best_f2'], True),
-        ("Hypervolume (HV)",    agwo_hvs,                sfla_hvs,                False),
-        ("CPU Time (s)",        agwo_results['times'],   sfla_results['times'],   True),
-        ("Pareto Archive Size", agwo_sizes,              sfla_sizes,              False),
+        ("Best f1 - Distance",    agwo_results['best_f1'], sfla_results['best_f1'], True),
+        ("Best f2 - Emissions",   agwo_results['best_f2'], sfla_results['best_f2'], True),
+        ("Hypervolume (HV)",      agwo_hvs,                sfla_hvs,                False),
+        ("CPU Time (s)",          agwo_results['times'],   sfla_results['times'],   True),
+        ("Pareto Archive Size",   agwo_sizes,              sfla_sizes,              False),
     ]
 
     print(f"\n{'='*72}")
@@ -350,12 +345,12 @@ if __name__ == "__main__":
     print("  AGWO vs SFLA — Benchmark & Comparison")
     print("=" * 60)
 
-    # --- Load dataset once, shared by both algorithms ---
-    coords       = load_tsplib(TSP_FILE)
-    N_CITIES     = len(coords)
-    dist_matrix  = compute_distance_matrix(coords)
-    time_matrix  = compute_time_matrix(dist_matrix, seed=99)
-    dataset_name = TSP_FILE.replace('.tsp', '')
+    # Load dataset once, shared by both algorithms
+    coords          = load_tsplib(TSP_FILE)
+    N_CITIES        = len(coords)
+    dist_matrix     = compute_distance_matrix(coords)
+    emission_matrix = compute_emission_matrix(dist_matrix, seed=99)
+    dataset_name    = TSP_FILE.replace('.tsp', '')
 
     print(f"\nDataset : {TSP_FILE}")
     print(f"Cities  : {N_CITIES}")
@@ -363,49 +358,50 @@ if __name__ == "__main__":
 
     # --- Run AGWO ---
     agwo_results = run_algorithm(
-        name        = 'AGWO',
-        algo_func   = agwo_motsp,
-        algo_kwargs = {
+        name            = 'AGWO',
+        algo_func       = agwo_motsp,
+        algo_kwargs     = {
             'pop_size':    AGWO_POP_SIZE,
             'max_iter':    AGWO_MAX_ITER,
             'archive_max': AGWO_ARCHIVE_MAX,
         },
-        n_cities    = N_CITIES,
-        dist_matrix = dist_matrix,
-        time_matrix = time_matrix,
-        n_runs      = N_RUNS,
-        base_seed   = RANDOM_SEED
+        n_cities        = N_CITIES,
+        dist_matrix     = dist_matrix,
+        emission_matrix = emission_matrix,
+        n_runs          = N_RUNS,
+        base_seed       = RANDOM_SEED
     )
 
     # --- Run SFLA ---
     sfla_results = run_algorithm(
-        name        = 'SFLA',
-        algo_func   = sfla_motsp,
-        algo_kwargs = {
+        name            = 'SFLA',
+        algo_func       = sfla_motsp,
+        algo_kwargs     = {
             'n_frogs':      SFLA_N_FROGS,
             'm_memeplexes': SFLA_M_MEMEPLEXES,
             'n_local':      SFLA_N_LOCAL,
             'max_shuffles': SFLA_MAX_SHUFFLES,
             'archive_max':  SFLA_ARCHIVE_MAX,
         },
-        n_cities    = N_CITIES,
-        dist_matrix = dist_matrix,
-        time_matrix = time_matrix,
-        n_runs      = N_RUNS,
-        base_seed   = RANDOM_SEED
+        n_cities        = N_CITIES,
+        dist_matrix     = dist_matrix,
+        emission_matrix = emission_matrix,
+        n_runs          = N_RUNS,
+        base_seed       = RANDOM_SEED
     )
 
-    # --- Shared reference point for hypervolume (must see all archives) ---
+    # Shared reference point for hypervolume
     all_archives = agwo_results['archives'] + sfla_results['archives']
     ref_point    = get_reference_point(all_archives)
 
-    # --- Print summary table ---
+    # Summary table
     print_summary_table(agwo_results, sfla_results, ref_point, dataset_name)
 
-    # --- Generate and save all plots ---
+    # Plots
     print("  Generating plots...")
     plot_convergence_comparison(agwo_results, sfla_results, dataset_name)
     plot_pareto_comparison(agwo_results, sfla_results, dataset_name)
-    plot_best_tours_side_by_side(agwo_results, sfla_results, coords, dataset_name)
+    plot_best_tours_side_by_side(agwo_results, sfla_results,
+                                  coords, dataset_name)
 
     print("\nAll done. Output files saved to current directory.")
