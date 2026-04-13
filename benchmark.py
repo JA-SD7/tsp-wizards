@@ -51,6 +51,10 @@ SFLA_ARCHIVE_MAX  = 200
 # Number of points to normalize convergence curves to (for fair comparison)
 NORM_POINTS       = 100
 
+# Data directory — all .tsp files should be placed here
+DATA_DIR          = 'tsp_container'
+os.makedirs(DATA_DIR, exist_ok=True)
+
 # Results directory — all output images will be saved here
 RESULTS_DIR       = 'results'
 os.makedirs(RESULTS_DIR, exist_ok=True)
@@ -354,13 +358,14 @@ if __name__ == "__main__":
     print("=" * 60)
 
     # Load dataset once, shared by both algorithms
-    coords          = load_tsplib(TSP_FILE)
+    tsp_path        = os.path.join(DATA_DIR, TSP_FILE)
+    coords          = load_tsplib(tsp_path)
     N_CITIES        = len(coords)
     dist_matrix     = compute_distance_matrix(coords)
     emission_matrix = compute_emission_matrix(dist_matrix, seed=99)
     dataset_name    = TSP_FILE.replace('.tsp', '')
 
-    print(f"\nDataset    : {TSP_FILE}")
+    print(f"\nDataset    : {tsp_path}")
     print(f"Cities     : {N_CITIES}")
     print(f"Runs       : {N_RUNS} per algorithm")
     print(f"Results dir: {RESULTS_DIR}/")
