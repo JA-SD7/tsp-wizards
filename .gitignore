@@ -1,0 +1,10 @@
+# Results folder - generated images
+results/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# TSP output files saved by individual scripts
+*.png

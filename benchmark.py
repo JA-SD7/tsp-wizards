@@ -14,6 +14,7 @@ Author: [Your Name]
 Course: DSAI3203
 """
 
+import os
 import time
 import random
 import numpy as np
@@ -31,24 +32,28 @@ from sfla_tsp import sfla_motsp
 # =============================================================================
 # CONFIGURATION
 # =============================================================================
-TSP_FILE          = 'eil51.tsp'   # or 'berlin52.tsp'
+TSP_FILE          = 'eil51.tsp'   # Insert the name of the tsp data file to be used
 N_RUNS            = 10            # Independent runs per algorithm
 RANDOM_SEED       = 42            # Base seed (incremented per run)
 
 # AGWO parameters
 AGWO_POP_SIZE     = 30
 AGWO_MAX_ITER     = 300
-AGWO_ARCHIVE_MAX  = 100
+AGWO_ARCHIVE_MAX  = 200
 
 # SFLA parameters
 SFLA_N_FROGS      = 30
 SFLA_M_MEMEPLEXES = 5
 SFLA_N_LOCAL      = 10
 SFLA_MAX_SHUFFLES = 60
-SFLA_ARCHIVE_MAX  = 100
+SFLA_ARCHIVE_MAX  = 200
 
 # Number of points to normalize convergence curves to (for fair comparison)
 NORM_POINTS       = 100
+
+# Results directory — all output images will be saved here
+RESULTS_DIR       = 'results'
+os.makedirs(RESULTS_DIR, exist_ok=True)
 
 
 # =============================================================================
@@ -190,6 +195,7 @@ def plot_convergence_comparison(agwo_results, sfla_results, dataset_name):
     Plot AGWO vs SFLA convergence curves on the same axes.
     X-axis normalized to 0-100% progress for fair comparison.
     Shaded band shows min/max range across all runs.
+    Saved to RESULTS_DIR.
     """
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
     fig.suptitle(f"Convergence Comparison — {dataset_name}", fontsize=13)
@@ -197,7 +203,7 @@ def plot_convergence_comparison(agwo_results, sfla_results, dataset_name):
     x = np.linspace(0, 100, NORM_POINTS)
 
     for ax, obj_key, ylabel, title_suffix in [
-        (ax1, 'conv_f1', 'Best Distance',       'f1 (Distance)'),
+        (ax1, 'conv_f1', 'Best Distance',           'f1 (Distance)'),
         (ax2, 'conv_f2', 'Best Emissions (kg CO2)', 'f2 (Emissions)')
     ]:
         for results, color, label in [
@@ -219,7 +225,7 @@ def plot_convergence_comparison(agwo_results, sfla_results, dataset_name):
         ax.grid(True, linestyle='--', alpha=0.5)
 
     plt.tight_layout()
-    fname = f"comparison_convergence_{dataset_name}.png"
+    fname = os.path.join(RESULTS_DIR, f"comparison_convergence_{dataset_name}.png")
     plt.savefig(fname, dpi=150)
     plt.close()
     print(f"\n  Saved: {fname}")
@@ -228,6 +234,7 @@ def plot_convergence_comparison(agwo_results, sfla_results, dataset_name):
 def plot_pareto_comparison(agwo_results, sfla_results, dataset_name):
     """
     Overlay AGWO and SFLA Pareto fronts from their best run on one plot.
+    Saved to RESULTS_DIR.
     """
     agwo_best_idx = int(np.argmin(agwo_results['best_f1']))
     sfla_best_idx = int(np.argmin(sfla_results['best_f1']))
@@ -251,7 +258,7 @@ def plot_pareto_comparison(agwo_results, sfla_results, dataset_name):
     plt.legend()
     plt.grid(True, linestyle='--', alpha=0.5)
     plt.tight_layout()
-    fname = f"comparison_pareto_{dataset_name}.png"
+    fname = os.path.join(RESULTS_DIR, f"comparison_pareto_{dataset_name}.png")
     plt.savefig(fname, dpi=150)
     plt.close()
     print(f"  Saved: {fname}")
@@ -261,6 +268,7 @@ def plot_best_tours_side_by_side(agwo_results, sfla_results,
                                   coords, dataset_name):
     """
     Plot the best tour found by each algorithm side by side on a city map.
+    Saved to RESULTS_DIR.
     """
     agwo_best_idx = int(np.argmin(agwo_results['best_f1']))
     sfla_best_idx = int(np.argmin(sfla_results['best_f1']))
@@ -289,7 +297,7 @@ def plot_best_tours_side_by_side(agwo_results, sfla_results,
         ax.grid(True, linestyle='--', alpha=0.4)
 
     plt.tight_layout()
-    fname = f"comparison_tours_{dataset_name}.png"
+    fname = os.path.join(RESULTS_DIR, f"comparison_tours_{dataset_name}.png")
     plt.savefig(fname, dpi=150)
     plt.close()
     print(f"  Saved: {fname}")
@@ -314,11 +322,11 @@ def print_summary_table(agwo_results, sfla_results, ref_point, dataset_name):
     sfla_sizes = [len(a) for a in sfla_results['archives']]
 
     metrics = [
-        ("Best f1 - Distance",    agwo_results['best_f1'], sfla_results['best_f1'], True),
-        ("Best f2 - Emissions",   agwo_results['best_f2'], sfla_results['best_f2'], True),
-        ("Hypervolume (HV)",      agwo_hvs,                sfla_hvs,                False),
-        ("CPU Time (s)",          agwo_results['times'],   sfla_results['times'],   True),
-        ("Pareto Archive Size",   agwo_sizes,              sfla_sizes,              False),
+        ("Best f1 - Distance",  agwo_results['best_f1'], sfla_results['best_f1'], True),
+        ("Best f2 - Emissions", agwo_results['best_f2'], sfla_results['best_f2'], True),
+        ("Hypervolume (HV)",    agwo_hvs,                sfla_hvs,                False),
+        ("CPU Time (s)",        agwo_results['times'],   sfla_results['times'],   True),
+        ("Pareto Archive Size", agwo_sizes,              sfla_sizes,              False),
     ]
 
     print(f"\n{'='*72}")
@@ -352,9 +360,10 @@ if __name__ == "__main__":
     emission_matrix = compute_emission_matrix(dist_matrix, seed=99)
     dataset_name    = TSP_FILE.replace('.tsp', '')
 
-    print(f"\nDataset : {TSP_FILE}")
-    print(f"Cities  : {N_CITIES}")
-    print(f"Runs    : {N_RUNS} per algorithm")
+    print(f"\nDataset    : {TSP_FILE}")
+    print(f"Cities     : {N_CITIES}")
+    print(f"Runs       : {N_RUNS} per algorithm")
+    print(f"Results dir: {RESULTS_DIR}/")
 
     # --- Run AGWO ---
     agwo_results = run_algorithm(
@@ -404,4 +413,4 @@ if __name__ == "__main__":
     plot_best_tours_side_by_side(agwo_results, sfla_results,
                                   coords, dataset_name)
 
-    print("\nAll done. Output files saved to current directory.")
+    print(f"\nAll done. Images saved to '{RESULTS_DIR}/' directory.")

@@ -106,8 +106,8 @@ def compute_emission_matrix(dist_matrix, seed=99):
     """
     np.random.seed(seed)
     n = len(dist_matrix)
-    # Fuel consumption rate varies per edge: 0.06 to 0.15 L/km
-    fuel_rates = np.random.uniform(0.06, 0.15, (n, n))
+    # Fuel consumption rate varies per edge: 0.03 to 0.25 L/km
+    fuel_rates = np.random.uniform(0.03, 0.25, (n, n))
     emission_matrix = dist_matrix * fuel_rates * EMISSION_FACTOR
     return emission_matrix
 
@@ -479,7 +479,7 @@ if __name__ == "__main__":
     TSP_FILE    = 'eil51.tsp'   # or 'berlin52.tsp'
     POP_SIZE    = 30
     MAX_ITER    = 300
-    ARCHIVE_MAX = 100
+    ARCHIVE_MAX = 200
 
     coords          = load_tsplib(TSP_FILE)
     N_CITIES        = len(coords)
