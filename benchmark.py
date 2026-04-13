@@ -32,7 +32,7 @@ from sfla_tsp import sfla_motsp
 # =============================================================================
 # CONFIGURATION
 # =============================================================================
-TSP_FILE          = 'st70.tsp'   # Insert the name of the tsp data file to be used
+TSP_FILE          = 'eil76.tsp'   # Insert the name of the tsp data file to be used
 N_RUNS            = 10            # Independent runs per algorithm
 RANDOM_SEED       = 42            # Base seed (incremented per run)
 
